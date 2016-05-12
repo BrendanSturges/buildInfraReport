@@ -65,6 +65,6 @@ foreach($server in $serverList)
 		$resName = $resource.split('.')[0]
 		$holder | Export-CSV "$Loc\$date\$domain\$server\$($server)_$($resName)_$($date).csv" -notypeinformation
 
-		buildChart($blank)
+		buildChart($blank) | Out-Null
 	}
 }
