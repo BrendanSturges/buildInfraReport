@@ -56,14 +56,19 @@ Connect-VIServer $esx
 
 foreach($server in $serverList)
 {
+	$j = 0
 	$pingIt = ping $server -n 1
 	$domain = $pingIt.Split('.')[2]
+	$i++
+	Write-Progress -id 1 -activity "Generating report for server: $server `($i of $($serverList.count)`)" -percentComplete ($i / $serverList.Count*100) 
 	Foreach($resource in $stat){
+		$j++
+		Write-Progress -id 2 -parentid 1 -activity "Checking resource: $resource `($j of $($stat.count)`)" -percentComplete ($j / $serverList.Count*100)
 		$holder = Get-VM -name $server | Get-Stat -stat $resource -start $start
 		$sDate = ($holder.timestamp).toShortDateString()
 		$sTime = ($holder.timestamp).toShortTimeString()
 		$resName = $resource.split('.')[0]
-		$holder | Export-CSV "$Loc\$date\$domain\$server\$($server)_$($resName)_$($date).csv" -notypeinformation
+		$holder | Export-CSV "L:\Reporting\SCCM Infra Performance\$date\$domain\$server\$($server)_$($resName)_$($date).csv" -notypeinformation
 
 		buildChart($blank) | Out-Null
 	}
