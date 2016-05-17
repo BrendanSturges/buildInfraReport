@@ -7,6 +7,33 @@ Function Get-FileName($initialDirectory){
 	$OpenFileDialog.filename
 }
 
+Function Get-Folder($initialDirectory) {
+    [Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null
+    [System.Windows.Forms.Application]::EnableVisualStyles()
+    $browse = New-Object System.Windows.Forms.FolderBrowserDialog
+    $browse.RootFolder = [System.Environment+SpecialFolder]'MyComputer'
+    $browse.ShowNewFolderButton = $false
+    $browse.Description = "Choose a directory"
+
+    $loop = $true
+    while($loop)
+    {
+        if ($browse.ShowDialog() -eq "OK")
+        {
+            $loop = $false
+        } else
+        {
+            $res = [System.Windows.Forms.MessageBox]::Show("You clicked Cancel. Try again or exit script?", "Choose a directory", [System.Windows.Forms.MessageBoxButtons]::RetryCancel)
+            if($res -eq "Cancel")
+            {
+                return
+            }
+        }
+    }
+    $browse.SelectedPath
+    $browse.Dispose()
+}
+
 Function buildChart($blank){
 	[void][Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms.DataVisualization")
 	$chartIt = New-object System.Windows.Forms.DataVisualization.Charting.Chart
@@ -36,15 +63,14 @@ Function buildChart($blank){
 	$chartIt.Series["Metrics"].color = "red"
 	$chartIt.Series["Metrics"].ChartType = "Line"
 	
-	$chartIt.SaveImage("$Loc\$date\$domain\$server\$($server)_$($resName)_$($date).png","png")
+	$chartIt.SaveImage("$folderLoc\$date\$domain\$server\$($server)_$($resName)_$($date).png","png")
 }
 
-$serverList = Get-Content -Path (Get-FileName)
-$Loc = ""
-$esx = ""
+$date = get-date -format MM-dd
 
-$date = Read-Host -Prompt "What's the date for the top level folder? (ex 2-19)"
-Robocopy "$Loc\2-19" "$Loc\$date" /E /XF *.*
+$serverList = Get-Content -Path (Get-FileName)
+
+$folderLoc = Get-Folder
 
 $start = (Get-Date).AddDays(-7)
 
@@ -53,6 +79,8 @@ $stat = @("cpu.usage.average", "mem.usage.average", "disk.usage.average", "net.u
 Add-PSSnapin VMWare*
 
 Connect-VIServer $esx
+$i = 0
+
 
 foreach($server in $serverList)
 {
@@ -68,7 +96,8 @@ foreach($server in $serverList)
 		$sDate = ($holder.timestamp).toShortDateString()
 		$sTime = ($holder.timestamp).toShortTimeString()
 		$resName = $resource.split('.')[0]
-		$holder | Export-CSV "L:\Reporting\SCCM Infra Performance\$date\$domain\$server\$($server)_$($resName)_$($date).csv" -notypeinformation
+		New-Item -ErrorAction Ignore -Path $folderLoc\$date\$domain\$server -ItemType directory | Out-Null
+		$holder | Export-CSV "$folderLoc\$date\$domain\$server\$($server)_$($resName)_$($date).csv" -notypeinformation
 
 		buildChart($blank) | Out-Null
 	}
